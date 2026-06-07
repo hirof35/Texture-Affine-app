@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Texture Mapping</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: sans-serif;
+            background-color: #f0f0f0;
+        }
+        #surface {
+            border: 2px solid #333;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            cursor: crosshair;
+        }
+        .info {
+            margin-top: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>テクスチャマッピング (4点クリックしてください)</h1>
+    <canvas id="surface" width="600" height="600"></canvas>
+    
+    <img id="picture" src="picture0.jpg" style="display:none" alt="texture" />
+
+    <div class="info">
+        <p>キャンバス内を4回クリックすると、そこに画像がマッピングされます。</p>
+    </div>
+
+    <script>
+        "use strict";
+
+        // 定数・変数の定義
+        const TEX_W = 250;
+        const TEX_H = 250;
+        let points = [];
+        
+        let ctx, picture;
+
+        function init() {
+            picture = document.getElementById("picture");
+            const canvas = document.getElementById("surface");
+            ctx = canvas.getContext("2d");
+            ctx.fillStyle = "green";
+
+            // イベントリスナーの登録 (モダンな書き方)
+            canvas.addEventListener("mousedown", handleMouseDown);
+        }
+
+        function handleMouseDown(e) {
+            // クリック位置のドットを描画
+            ctx.beginPath();
+            ctx.arc(e.offsetX, e.offsetY, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 座標を記憶
+            points.push({ x: e.offsetX, y: e.offsetY });
+
+            // 4点集まったら描画処理へ
+            if (points.length === 4) {
+                repaint();
+            }
+        }
+
+        function repaint() {
+            // --- 三角形1 (左下・右下・右上付近のトリミング) ---
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            ctx.lineTo(points[2].x, points[2].y);
+            ctx.lineTo(points[3].x, points[3].y);
+            ctx.closePath();
+            ctx.clip();
+
+            // アフィン変換行列の計算
+            let dx = points[0].x, dy = points[0].y;
+            let sx = (points[3].x - points[0].x) / TEX_W;
+            let sy = (points[2].y - points[3].y) / TEX_H;
+            let rx = (points[3].y - points[0].y) / TEX_W;
+            let ry = (points[2].x - points[3].x) / TEX_H;
+            ctx.setTransform(sx, rx, ry, sy, dx, dy);
+            ctx.drawImage(picture, 0, 0, TEX_W, TEX_H);
+            ctx.restore();
+
+            // --- 三角形2 (左下・左上・右上付近のトリミング) ---
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            ctx.lineTo(points[1].x, points[1].y);
+            ctx.lineTo(points[2].x, points[2].y);
+            ctx.closePath();
+            ctx.clip();
+
+            // アフィン変換行列の計算
+            dx = points[0].x; dy = points[0].y;
+            sx = (points[2].x - points[1].x) / TEX_W;
+            sy = (points[1].y - points[0].y) / TEX_H;
+            rx = (points[2].y - points[1].y) / TEX_W;
+            ry = (points[1].x - points[0].x) / TEX_H;
+            ctx.setTransform(sx, rx, ry, sy, dx, dy);
+            ctx.drawImage(picture, 0, 0, TEX_W, TEX_H);
+            ctx.restore();
+
+            // 点のデータをリセット
+            points = [];
+        }
+
+        // ページ読み込み完了時に初期化
+        window.addEventListener("DOMContentLoaded", init);
+    </script>
+</body>
+</html>
